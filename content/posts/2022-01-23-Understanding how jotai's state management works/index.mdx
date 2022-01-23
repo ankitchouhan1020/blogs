@@ -4,21 +4,26 @@ author: Ankit Chouhan
 date: 2022-01-23
 banner: ./images/hero.jpg
 tags:
-  - React state management
-  - Jotai
+  - react
+  - state management
+  - jotai
 description: Today we are going to talk about [jotai](jotai.org), an atomic state management solution for React JS.
 ---
+import { Tweet, CodeSandbox } from 'mdx-embed'
 
 ![Photo by <a href="https://unsplash.com/@furtado?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Felipe Furtado</a> on <a href="https://unsplash.com/s/photos/paper-management?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a>
-](images/hero-2.png)
+](images/hero.jpg)
 
 Recently I have been looking at source codes of some good open source libraries and every time I be like, Wow.. how didn't I think about something like this yet.
 
-Today we are going to talk about [jotai](jotai.org), an atomic state management solution for React JS. The creator of jotai [Daishi Kato](https://github.com/dai-shi), recently shared a [tweet](https://twitter.com/dai_shi/status/1484835169475653634?s=20) about simplified version of jotai. This article will be around that tweet. It was quite interesting how simple thing can make huge impact on React Ecosystem.
+Today we are going to talk about [jotai](https://jotai.org), an atomic state management solution for React JS. The creator of jotai [Daishi Kato](https://github.com/dai-shi), recently shared a [tweet](https://twitter.com/dai_shi/status/1484835169475653634?s=20) about simplified version of jotai. This article will be around that tweet. It was quite interesting how simple thing can make huge impact on React Ecosystem.
 
-Let's see how it works internally.
+<Tweet tweetLink="dai_shi/status/1484835169475653634?s=20" align="center"/>
+
+Let's understand this.
 
 ```javascript
+// This is how we create atoms in react codebase using jotai
 import  { atom }  from  'jotai'
 
 const messageAtom =  atom('hello')
@@ -28,9 +33,11 @@ const countAtom = atom(1)
 State in jotai is just a collection of atoms. Atoms are not tied with any specific component, that means you can export this *messageAtom* and import it any other module. This is how it is implemented.
 
 ```javascript
-export  const  atom  =  (initialValue)  =>  ({ init:  initialValue  });
+export const atom = (initialValue) => ({ init: initialValue });
 ```
 It's a function that returns a config object. This object holds the initial value of that atom.
+
+<br/>
 
 Okay, we might have many atoms like this in our codebase, right ? So now we need some map kind of thing to hold them all. Here comes the atomStateMap.
 
@@ -53,6 +60,8 @@ weakmap.get(john) // undefined
 If reference of john doesn't exist, the key is removed from weakmap and free it's value if not referenced anywhere else.
 
 ---
+<br/>
+
 Get and Set atoms in atomStateMap.
 ```javascript
 const getAtomState = (atom) => {
@@ -66,28 +75,31 @@ const getAtomState = (atom) => {
 ```
 *getAtomState* returns the atom's state from *atomStateMap*.  If there is no entry of that atom, it registers that atom in *atomStateMap*.
 *atomState* contains current value of that atom and a set of listeners. Listeners are simply a set of callback functions for specific components. 
+<br/>
 
-Let's say in [this example](https://codesandbox.io/s/jotai-example-7wzri?file=/src/jotai.js:46-109), *IncrementCounter* and *DecrementCounter* are using the same atom. So if value of *countAtom* is changed in a component then we need to notify other component about that state change and trigger re-rendering for both component. 
+<CodeSandbox codeSandboxId="jotai-example-7wzri" />
+
+Let's say in [this example](https://codesandbox.io/s/jotai-example-7wzri), *IncrementCounter* and *DecrementCounter* are using the same atom. So if value of *countAtom* is changed in a component then we need to notify other component about that state change and trigger re-rendering for both component. 
 
 Now how we are going to use this atom in our functional component ? For that we will need a custom hook called *useAtom*.
 
 ```javascript
-export  const  useAtom  =  (atom)  =>  {
-	const  atomState  =  getAtomState(atom);
-	const  [value, setValue] =  useState(atomState.value);
+export const useAtom = (atom) => {
+	const atomState = getAtomState(atom);
+	const [value, setValue] = useState(atomState.value);
 	
-	useEffect(()  =>  {
-		const  callback  =  ()  =>  setValue(atomState.value);
+	useEffect(() => {
+		const callback = () => setValue(atomState.value);
 		atomState.listeners.add(callback);
 		callback();
-		return  ()  =>  atomState.listeners.delete(callback);
-	},  [atomState]);
+		return () => atomState.listeners.delete(callback);
+	}, [atomState]);
 	
-	const  setAtom  =  (nextValue)  =>  {
-		atomState.value  =  nextValue;
-		atomState.listeners.forEach((l)  =>  l());
+	const setAtom = (nextValue) => {
+		atomState.value = nextValue;
+		atomState.listeners.forEach((l) => l());
 	};
-	return  [value,  setAtom];
+	return [value, setAtom];
 };
 ```
 First we fetch the latest state of that atom via calling *getAtomState* function. We need to trigger re-rendering if atom's value changes, right ? so what's better than using a useState hook.
